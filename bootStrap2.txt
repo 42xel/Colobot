@@ -1,0 +1,51 @@
+public void object::goBuild(int cat)
+{
+	goto(search(Titanium).position);
+	build(cat);
+}
+
+public int object::goGrab(int cat, point pos, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	goto(search(cat, pos, min, max, sens, filter).position);
+	grab();
+	return 0;
+}
+public int object::goGrab(int cat, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	return goGrab(cat, position, min, max, sens, filter);
+}
+
+public int object::goDrop(point p)
+{
+	goto(p);
+	drop();
+	return 0;
+}
+
+public int object::goFetch(int cat, point destination, point source, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	return goGrab(cat, source, min, max, sens, filter) + goDrop(destination);
+}
+public int object::goFetch(int cat, point destination, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	return goFetch(cat, destination, position, min, max, sens, filter);
+}
+
+public int object::goFetch(int cat, object obj)
+{//maybe use detect for error handling
+	return goGrab(cat) + goDrop(obj.position);
+}
+
+extern void object::BootStrap()
+{
+	//goBuild(ResearchCenter);
+	object rc = search(ResearchCenter);
+	goFetch(PowerCell, rc.position);
+	rc.research(ResearchTracked);
+	
+	//goBuild(BotFactory);
+	object bf = search(BotFactory);
+	goFetch(Titanium, bf.position);
+	move(-2);
+	bf.factory(TrackedGrabber, "goFetch(BlackBox,Me.position);");
+}

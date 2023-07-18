@@ -1,0 +1,86 @@
+public float object::hover(float min, float max)
+{
+	int m1 = - 1;
+	
+	float z = position.z - topo(position);
+	int jetset = z < min ? 1 : z > max ? -1 : 0 ;
+	jet(jetset);
+	switch (jetset)
+	{
+		case 1 : return z - min;
+		case m1: return z - max;
+	}
+	return 0;
+}
+public float object::hover(float ideal,float min, float max)
+{
+	int m1 = - 1;
+	
+	float z = position.z - topo(position);
+	
+	float jetset = z <= ideal ? 1 - baryweight(min, ideal, z):
+	    -1 + baryweight(max, ideal, z);
+	jet(jetset);
+	int jetset2 = trunc (jetset);
+	switch (jetset2)
+	{
+		case 1 : return z - min;
+		case m1: return z - max;
+	}
+	return 0;
+}
+public float object::hover(float ideal)
+{
+	hover(ideal, 0.75 * ideal, ideal + 5);
+	return position.z - topo(position) - ideal;
+}
+
+public bool object::movetoward(point target, float minTspeed, float maxTspeed, float distMin, float distMax, float distTarget, float minAbsRspeed = 0)
+// moving to a point using direct control (asynchronous). return true as long as movement is needed
+{
+	float dir = direction(target);
+	
+	float rSpeed = dir / 90;
+	if (abs(rSpeed) > 1) // the target is behind us
+	{
+		rSpeed = rSpeed >= 0 ? 1 : -1;
+		motor(-dir, dir);
+		
+		return true;
+	}
+	if (abs(rSpeed) < minAbsRspeed) // we may want to swipe
+	{
+		rSpeed = rSpeed >= 0 ? minAbsRspeed : -minAbsRspeed;
+	}
+	
+	float dist = distance2d(target, position);
+	
+	float tSpeedWeight = distTarget < dist ? (-1 + baryweight(distMin, distTarget, dist)) / 2 :
+	    (+1 + baryweight(distTarget, distMax, dist)) / 2;
+	
+	float tSpeed = barycenter(minTspeed, maxTspeed, - tSpeedWeight) ; //TODO for whatever eeason a minus is needed here. investigate.
+	if (tSpeed > maxTspeed) tSpeed = maxTspeed;
+	if (tSpeed < minTspeed) tSpeed = minTspeed;
+	
+	if (abs(tSpeed) + abs(rSpeed) > 1) tSpeed = tSpeed >= 0 ? 1 - abs(rSpeed) : abs(rSpeed) - 1 ;
+	
+	motor(tSpeed - rSpeed, tSpeed + rSpeed);
+	
+	return abs(rSpeed) > 0.05 or abs(tSpeed) > 0.05 ;
+}
+public bool object::movetoward(point target, float minTspeed, float maxTspeed, float distMin, float distMax)
+{
+	return movetoward(target, minTspeed, maxTspeed, distMin, distMax, (distMin + distMax) / 2);
+}
+public bool object::movetoward(point target, float minTspeed = -1, float maxTspeed = 1, float dist = 5)
+{
+	return movetoward(target, minTspeed, maxTspeed, dist - 1, dist + 1, dist);
+}
+
+
+extern string Basic_winged_Lib()
+{
+	message("this is a basic library for winged bots.", DisplayInfo);
+	
+	return "this is a suposedly more helpful description of this library";
+}

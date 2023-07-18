@@ -1,0 +1,155 @@
+public class bootStrapedObject
+{
+	protected int cat;            //the category of the bootstrapped object to build
+	protected object obj = null;        //the object once built
+	
+	public int getCat() {return cat;};
+	public object getObj() {return obj;};
+	
+	public void mBuild(point p)
+	{
+		obj = goBuild(cat, p);
+	}
+	public void mBuild()
+	{
+		obj = goBuild(cat);
+	}
+}
+
+public class bootStrapResearchCenter extends bootStrapedObject
+{
+	synchronized void bootStrapResearchCenter()
+	{
+		if (obj != null) return;
+		cat = ResearchCenter;
+		super.mBuild();
+		goFetch(PowerCell, obj.position);
+	}
+	synchronized void bootStrapResearchCenter(int res)
+	{
+		if (obj != null) return;
+		cat = ResearchCenter;
+		super.mBuild();
+		if (obj==null) message("error obj not initialized", DisplayError);
+		goFetch(PowerCell, obj.position);
+		obj.research(res);
+	}
+	synchronized void bootStrapResearchCenter(point p)
+	{
+		if (obj != null) return;
+		cat = ResearchCenter;
+		super.mBuild(p);
+		goFetch(PowerCell, obj.position);
+	}
+	synchronized void bootStrapResearchCenter(point p, int res)
+	{
+		if (obj != null) return;
+		cat = ResearchCenter;
+		super.mBuild(p);
+		goFetch(PowerCell, obj.position);
+		obj.research(res);
+	}
+}
+
+public class bootStrapBotFactory extends bootStrapedObject
+{
+	synchronized void bootStrapBotFactory()
+	{
+		if (obj != null) return;
+		cat = BotFactory;
+		super.mBuild();
+		goFetch(Titanium, obj.position);
+		move(-3);
+	}
+	synchronized void bootStrapBotFactory(int bot, string prgm="")
+	{
+		if (obj != null) return;
+		cat = BotFactory;
+		super.mBuild();
+		goFetch(Titanium, obj.position);
+		move(-3);
+		obj.factory(bot, prgm);
+	}
+	synchronized void bootStrapBotFactory(point p)
+	{
+		if (obj != null) return;
+		cat = BotFactory;
+		super.mBuild(p);
+		goFetch(Titanium, obj.position);
+		move(-3);
+	}
+	synchronized void bootStrapBotFactory(point p, int bot, string prgm="")
+	{
+		if (obj != null) return;
+		cat = BotFactory;
+		super.mBuild(p);
+		goFetch(Titanium, obj.position);
+		move(-3);
+		obj.factory(bot, prgm);
+	}
+}
+
+public object object::self () {return this;}    //when this means this current class object
+int [] AnyBotArray () {
+	int [] r = {PracticeBot, TargetBot,
+		WheeledGrabber, TrackedGrabber, WingedGrabber, LeggedGrabber,
+		WheeledSniffer, TrackedSniffer, WingedSniffer, LeggedSniffer,
+		WheeledShooter, TrackedShooter, WingedShooter, LeggedShooter,
+		WheeledOrgaShooter, TrackedOrgaShooter, WingedOrgaShooter, LeggedOrgaShooter,
+		Subber, Recycler, Thumper, Shielder, PhazerShooter};
+	return r;
+}
+
+public class bootStrapBot extends bootStrapedObject
+{
+	synchronized void pre()
+	{
+		goGrab(PowerCell);
+		goto(search(BotFactory).position);
+	}
+	synchronized void pre(point p)
+	{
+		goGrab(PowerCell);
+		goto(search(BotFactory, p).position);
+	}
+	synchronized void post()
+	{
+		goDrop(obj.position);
+		move(-3);
+	}
+	synchronized void bootStrapBot()
+	{
+		if (obj != null) return;
+		pre();
+		for (obj = search(AnyBotArray(), self().position, 1);
+		    obj == null; wait(1));
+		cat = obj.category;
+		post();
+	}
+	synchronized void bootStrapBot(int c)
+	{
+		if (obj != null) return;
+		cat = c;
+		pre();
+		for (obj = search(cat, self().position, 1);
+		    obj == null; wait(1));
+		post();
+	}
+	synchronized void bootStrapBot(int c, point p)
+	{
+		if (obj != null) return;
+		cat = c;
+		pre(p);
+		for (obj = search(cat, p, 1);
+		    obj == null; wait(1));
+		post();
+	}
+}
+
+
+extern void object::BootStrap()
+{
+	message("this is a public library, definining bootstraped classes",DisplayInfo);
+	message(this.position.z);
+	bootStrapResearchCenter RC(ResearchWinged);
+}

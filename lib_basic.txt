@@ -1,0 +1,106 @@
+public int[] object::AlienAny (){
+	int r [6] = {
+		       AlienQueen,
+		       AlienEgg,
+		       AlienAnt,
+		       AlienSpider,
+		       AlienWasp,
+		       AlienWorm
+	};
+	return r;
+}
+
+public float object::barycenter(float a, float b, float delta)
+/*
+returns the barycenter of a, b with respective weight (1-delta)/2 and (1+delta)/2
+in particular, when delta is -1, returns a, when delta is 1, returns b.
+*/
+{
+	return (a * (1+delta) + b * (1-delta)) / 2;
+}
+public float object::baryweight(float a, float b, float p)
+/*
+returns the number delta such that p is the barycenter of a, b with respective weights (1-delta)/2 and (1+delta)/2
+*/
+{
+	float d = b-a;
+	if (d == 0 and p == a) return 0.5;
+	
+	return (2 * p - a - b) / 2;
+}
+
+public object object::goBuild(int cat, point pos)
+{
+	goFetch(Titanium, pos, pos);
+	build(cat);
+	return(radar(cat));
+}
+
+public object object::goBuild(int cat)
+{
+	return goBuild(cat, flatspace(search(Titanium).position, 3));
+}
+
+public object object::goGrab(object target)
+{
+	goto(target.position);
+	grab();
+	return target;
+}
+public object object::goGrab(int cat, point pos, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	return goGrab(search(cat, pos, min, max, sens, filter));
+}
+public object object::goGrab(int cat, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	return goGrab(cat, position, min, max, sens, filter);
+}
+public object object::goGrab(int cat, object o, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	object r = goGrab(search(cat, o.position, min, max, sens, filter));
+	move(-2.5);
+	return r;
+}
+
+
+public object object::goDrop(point p, int oper = InFront)
+{
+	goto(p);
+	object item = load;
+	drop(oper);
+	return load;
+}
+public object object::goDrop(object p, int oper = InFront)
+{
+	goto(p.position);
+	move(-0.5);
+	object item = load;
+	drop(oper);
+	move(-2);
+	return load;
+}
+
+public object object::goFetch(int cat, point destination, point source, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	goGrab(cat, source, min, max, sens, filter);
+	return goDrop(destination);
+}
+public object object::goFetch(int cat, point destination, int min = 0, int max = 1000, int sens = 1, int filter = FilterNone)
+{
+	return goFetch(cat, destination, position, min, max, sens, filter);
+}
+public object object::goFetch(int cat, object obj)
+{//maybe use detect for error handling
+	goGrab(cat);
+	return goDrop(obj.position);
+}
+
+
+extern string Basic_Lib()
+{
+	message("this is a basic library, with mainly goFetch(), goBuild()", DisplayInfo);
+	//goBuild(ResearchCenter);
+	//goFetch(PowerCell, radar(ResearchCenter).position);
+	
+	return "this is a suposedly more helpful description of this library";
+}
