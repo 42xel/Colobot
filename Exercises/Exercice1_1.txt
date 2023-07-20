@@ -1,0 +1,9 @@
+extern void object::Spider1()
+{
+	object target;
+	
+	while((target = radar(cte().AlienAny )) != null)
+	{
+		fireAt(target);
+	}
+}

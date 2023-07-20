@@ -1,0 +1,405 @@
+//full library for missions, and eventually battle.
+
+///////////////////////////////////////////////////////////////////
+//Constant variables
+
+public class cte
+{
+	static bool init = false;
+	
+	//Categories
+	static int AlienAny [] =
+	 {
+		AlienQueen,
+		AlienEgg,
+		AlienAnt,
+		AlienSpider,
+		AlienWasp,
+		AlienWorm
+	};
+	static int BuildingAny [] =
+	{
+		Houston,
+		SpaceShip,
+		BotFactory,
+		ResearchCenter,
+		RadarStation,
+		ExchangePost,
+		RepairCenter,
+		DefenseTower,
+		AutoLab,
+		PowerStation,
+		PowerPlant,
+		NuclearPlant,
+		Converter,
+		Derrick,
+		PowerCaptor,
+		Vault,
+		StartArea,
+		GoalArea,
+		Target1,
+		AlienNest
+	};
+	static bool [] inBuildingAny;
+	static int BotAny [] =
+	{
+		PracticeBot,
+		TargetBot,
+		WheeledGrabber,
+		TrackedGrabber,
+		WingedGrabber,
+		LeggedGrabber,
+		WheeledSniffer,
+		TrackedSniffer,
+		WingedSniffer,
+		LeggedSniffer,
+		WheeledShooter,
+		TrackedShooter,
+		WingedShooter,
+		LeggedShooter,
+		WheeledOrgaShooter,
+		TrackedOrgaShooter,
+		WingedOrgaShooter,
+		LeggedOrgaShooter,
+		Subber,
+		Recycler,
+		Shielder,
+		Thumper,
+		PhazerShooter
+	};
+	static bool inBotAny [];
+	static int CellAny [] = {PowerCell, NuclearCell};
+	static bool inCellAny [];
+	
+	bool isCat(int cat, bool[] cats) {return cat < sizeof(cats) and cats[cat];}
+	bool isCat(object o, bool[] cats) {return isCat(o.category, cats);}
+	
+	static int RechargeOK = 0;
+	static int RechargeNotStill = -1;
+	static int RechargeNotLanded = -2;
+	static int RechargeNoCell = -3;
+	static int RechargeLoaded = -4;
+	static int RechargeNoDrop = -5;
+	static int RechargeNoDropAfter = -6;
+	
+	void cte ()
+	{
+		if (not init)
+		{
+			int [][] CatAny = {BuildingAny, BotAny, CellAny};
+			bool [][] inCatAny = {inBuildingAny, inBotAny, inCellAny};
+			
+			for (int j = 0; j < sizeof(CatAny); ++j)
+			{
+				if (inCatAny[j] == null)
+				{
+					float max = -1;
+					for (int i = 0; i < sizeof(CatAny[j]); ++i) if(CatAny[j][i] > max) max = CatAny[j][i];
+					for (int i = 0; i <= max; ++i)
+					{
+						inCatAny[j][i] = false;
+					}
+					for (int i = 0; i < sizeof(CatAny[j]); ++i) inCatAny[j][CatAny[j][i]] = true;
+				}
+			}
+		}
+		init = true;
+	}
+	void cte (int bla)    //cte cte(); is ambiguous, supposedly
+	{
+		this.cte();
+	}
+};
+public cte object::cte(){ return new cte(); }
+//allows to use the class anonymously (without creating a named instance), for example cte().AlienAny. Especially useful since (new cte()).AlienAny doesn't work.
+
+///////////////////////////////////////////////////////////////////
+//Math functions
+
+public float barycenter(float a, float b, float delta)
+//returns the barycenter of a, b with respective weight (1-delta)/2 and (1+delta)/2
+//in particular, when delta is -1, returns a, when delta is 1, returns b.
+{
+	return (a * (1+delta) + b * (1-delta)) / 2;
+}
+public float baryweight(float a, float b, float p)
+//returns the number delta such that p is the barycenter of a, b with respective weights (1-delta)/2 and (1+delta)/2
+{
+	float d = b-a;
+	if (d == 0 and p == a) return 0.5;
+	
+	return (2 * p - a - b) / 2;
+}
+
+///////////////////////////////////////////////////////////////////
+//Math functions on points
+
+public float oppositeDirection (float dir)
+{
+	return 0 < dir ? dir - 180 : dir + 180;
+}
+
+public point add (point a, point b)
+{
+	return new point (a.x + b.x, a.y + b.y, a.z + b.z);
+}
+public point minus (point a, point b)
+{
+	return new point (a.x - b.x, a.y - b.y, a.z - b.z);
+}
+public point minus (point b)
+{
+	return new point (- b.x, - b.y, - b.z);
+}
+public point mul (float alpha, point p)
+{
+	return new point (alpha * p.x, alpha * p.y, alpha * p.z);
+}
+public point normalize (point a)
+{
+	float d = distance(new point (0, 0, 0), a);
+	return new point (a.x / d, a.y / d, a.z / d);
+}
+public point normalize2D (point a)
+{
+	float d = distance(new point (0, 0, 0), new point (a.x, a.y, 0));
+	return new point (a.x / d, a.y / d, a.z / d);
+}
+//public point ground (point a)
+//{
+//return a;
+////return new point (a.x, a.y, topo(a));
+//}
+
+public point object::facing()
+{
+	return new point (cos(pitch) * cos(orientation), cos(pitch) * sin(orientation), sin(pitch));
+}
+public point object::facing2D()
+{
+	return new point (cos(orientation), sin(orientation), 0);
+}
+
+///////////////////////////////////////////////////////////////////
+//basic grabbing functions
+//adds sugar like moving backward after interacting with objects, and generally lots of overload.
+//TODO add special move as a funciton of cat rether than depending on the type.
+
+public object object::goDrop(point p, int oper = InFront)
+{
+	goto(p);
+	object item = load;
+	drop(oper);
+	return item;
+}
+public object object::goDrop(object o, int oper = InFront)
+{
+	cte cte(0);
+	object item = load;
+	
+	if ((o.category == GoalArea or cte.isCat(o, cte.inBotAny) and cte.isCat(load, cte.inCellAny)) and oper != EnergyCell)
+	{
+		goto(add(o.position, mul(3, normalize(minus(position, o.position)))) );
+		float d = direction(o.position);
+		if (oper == Behind) d = oppositeDirection(d);
+		turn(d);
+		drop(oper);
+		move(oper == Behind ? 1.5 : -1.5);
+		return item;
+	}
+	
+	goto(o.position);
+	drop(oper);
+	if (cte.isCat(o, cte.inBuildingAny)) move(-2.5);
+	return item;
+}
+
+public object object::goGrab(object o, int oper = InFront)
+{
+	cte cte(0);
+	
+	if (cte.isCat(o, cte.inBotAny))
+	{
+		goto(minus(o.position, mul(3, o.facing())));
+		float d = direction(o.position);
+		if (oper == Behind) d = oppositeDirection(d);
+		turn(d);
+		grab(oper);
+		return(load);
+	}
+	
+	object r = goGrab(o.position, oper);
+	if (cte.isCat(o, cte.inBuildingAny)) move(-2.5);
+	return r;
+}
+public object object::goGrab(point p, int oper = InFront)
+{
+	goto(p);
+	
+	float d = direction(p);
+	grab(oper);
+	return load;
+}
+public object object::goGrab(int cat, float angle = 0, float focus = 360, float min = 0, float max = 1000, int sens = 1, int filter = FilterNone){
+	return goGrab(radar(cat, angle, focus, min, max, sens, filter));}
+public object object::goGrab(int cat, point pos, float min = 0, float max = 1000, int sens = 1, int filter = FilterNone){
+	return goGrab(search(cat, pos, min, max, sens, filter));}
+public object object::goGrab(int cat, object o, float min = 0, float max = 1.5, int sens = 1, int filter = FilterNone){
+	return goGrab(search(cat, o.position, min, max, sens, filter));}
+
+public object object::goFetch(point origin, point destination)
+{
+	goGrab(origin);
+	return goDrop(destination);
+}
+public object object::goFetch(point origin, object bDestination)
+{
+	goGrab(origin);
+	return goDrop(bDestination);
+}
+public object object::goFetch(object bOrigin, point destination)
+{
+	goGrab(bOrigin);
+	return goDrop(destination);
+}
+public object object::goFetch(object bOrigin, object bDestination)
+{
+	goGrab(bOrigin);
+	return goDrop(bDestination);
+}
+public object object::goFetch(int cat, point destination, float angle = 0, float focus = 360, float min = 0, float max = 1000, int sens = 1, int filter = FilterNone){
+	return goFetch(radar(cat, angle, focus, min, max, sens, filter), destination);}
+public object object::goFetch(int cat, object destination, float angle = 0, float focus = 360, float min = 0, float max = 1000, int sens = 1, int filter = FilterNone){
+	return goFetch(radar(cat, angle, focus, min, max, sens, filter), destination);}
+public object object::goFetch(int cat, point destination, point source, float min = 0, float max = 1000, int sens = 1, int filter = FilterNone){
+	return goFetch(search(cat, source, min, max, sens, filter), destination);}
+public object object::goFetch(int cat, object destination, point source, float min = 0, float max = 1000, int sens = 1, int filter = FilterNone){
+	return goFetch(search(cat, source, min, max, sens, filter), destination);}
+public object object::goFetch(point origin){
+	point destination = space(position);
+	return goFetch(origin, destination);
+}
+public object object::goFetch(object origin){
+	point destination = space(position);
+	return goFetch(origin, destination);
+}
+public object object::goFetch(int cat){
+	point destination = space(position);
+	return goFetch(cat, destination);
+}
+
+public object object::goBuild(int cat, point pos)
+{
+	goFetch(Titanium, pos, pos);
+	move(-2.5);
+	build(cat);
+	return(radar(cat));
+}
+public object object::goBuild(int cat)
+{
+	return goBuild(cat, flatspace(search(Titanium).position, 3));
+}
+
+///////////////////////////////////////////////////////////////////
+//Maintenance instructions
+
+public int object::recharge (object bot, int [] cellCat)
+{
+	cte cte(0);
+	
+	if (bot.altitude > 0) return cte.RechargeNotLanded;
+	if (distance(bot.velocity, new point(0, 0, 0)) > 0) return cte.RechargeNotStill;
+	
+	object cell = null;
+	if (load != null)
+	{
+		for (int i = 0; i < sizeof(cellCat); ++i)
+		{
+			if (load.category == cellCat[i]) {cell = load; break;}
+		}
+		if (cell == null) return cte.RechargeLoaded;
+	}
+	if (cell == null)
+	{
+		object [] cells = radarall(cellCat);
+		for (int i = 0; i < sizeof(cells); ++i)
+		{
+			if (cells[i].energyLevel > 0.95)// and cells[i] != search(cte.BotAny, cells[i].position).energyCell)
+			{
+				cell = cells[i];
+				break;
+			}
+		}
+		if (cell == null) return cte.RechargeNoCell;
+		else goGrab(cell);
+	}
+	
+	if(bot.energyCell == null)
+	{
+		goDrop(bot);
+		return cte.RechargeOK;
+	}
+	else
+	{
+		goto(minus(bot.position, mul(3, bot.facing())));
+		turn(direction(bot.position));
+		
+		//TODO : foolproof looking for 2 intermediate spaces to drop cells?
+		if (not (drop(Behind) == 0)) message("cannot drop cell", DisplayError);
+		grab();
+		turn(90);
+		if (not (drop() == 0)) message("cannot drop cell", DisplayError);
+		
+		goFetch(cell, bot);
+		return cte.RechargeOK;
+	}
+}
+
+public int object::recharge (object bot, int cat){
+	int cellCat [1] = {cat};
+	return recharge(bot, cellCat);
+}
+public int object::recharge (object bot){
+	return recharge(bot, cte().CellAny);
+}
+
+//TODO : function to recharge all non grabber bot with low batterie, landed not moving.
+//TODO : function for grabber bots to recharge themselves.
+
+
+///////////////////////////////////////////////////////////////////
+//combat instructions
+public void object::aimAt(point p)
+{
+	aim(asin((p.z - (position.z + 1) )/distance(position, p)), direction(p));
+}
+
+//TODO add check on whether an ally is in the line of fire.
+public void object::fireAt(point p, float time = 0.2)
+{
+	turn(direction(p));
+	aimAt(p);
+	fire(time);
+}
+public void object::fireAt(object target, float time = 0.2)
+{    fireAt(target.position, time);    }
+public void object::fireAt(int cat, float time = 0.2)
+{    fireAt(radar(cat), time);    }
+public void object::fireAt(int [] cat, float time = 0.2)
+{    fireAt(radar(cat), time);    }
+//public void object::fireAt()
+//{    fireAt(radar(cte.AlienAny), 0.2);    }
+
+///////////////////////////////////////////////////////////////////
+//building classes
+
+
+/*
+//*/
+
+extern string lib()
+{
+	message("this is a basic library", DisplayInfo);
+	
+	return "this is a suposedly more helpful description of this library";
+}

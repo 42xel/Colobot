@@ -1,0 +1,5 @@
+extern void object::Spider2()
+{
+	move(-1);
+	recharge(search(WingedShooter));
+}

@@ -1,0 +1,20 @@
+public void fetchBlackBox()
+{
+	wait(10);
+	goGrab(BlackBox);
+	goDrop(search(SpaceShip).position);
+}
+
+extern void object::Mission1_2()
+{
+	bootStrap("fetchBlackBox");
+	
+	goGrab(PowerCell);
+	object bf = search(BotFactory);
+	goto(bf.position);
+	while (bf.busy()) wait(1);
+	goDrop(search(TrackedGrabber).position);
+	move(-3);
+	
+	goto(search(SpaceShip).position);
+}
