@@ -205,7 +205,11 @@ public object object::goDrop(object o, int oper = InFront)
 	
 	if ((o.category == GoalArea or cte.isCat(o, cte.inBotAny) and cte.isCat(load, cte.inCellAny)) and oper != EnergyCell)
 	{
-		goto(add(o.position, mul(3, normalize(minus(position, o.position)))) );
+		point targetP = cte.isCat(o, cte.inBotAny) and cte.isCat(load, cte.inCellAny) ?
+			minus(o.position, mul(3, o.facing())) :
+			add(o.position, mul(3, normalize(minus(position, o.position))));
+		goto(targetP);
+
 		float d = direction(o.position);
 		if (oper == Behind) d = oppositeDirection(d);
 		turn(d);
@@ -309,7 +313,7 @@ public object object::goBuild(int cat)
 ///////////////////////////////////////////////////////////////////
 //Maintenance instructions
 
-public int object::recharge (object bot, int [] cellCat)
+public int object::recharge (object bot, int [] cellCat, float energyThreshold = 1)
 {
 	cte cte(0);
 	
@@ -330,7 +334,7 @@ public int object::recharge (object bot, int [] cellCat)
 		object [] cells = radarall(cellCat);
 		for (int i = 0; i < sizeof(cells); ++i)
 		{
-			if (cells[i].energyLevel > 0.95)// and cells[i] != search(cte.BotAny, cells[i].position).energyCell)
+			if (cells[i].energyLevel >= energyThreshold)
 			{
 				cell = cells[i];
 				break;
@@ -360,16 +364,55 @@ public int object::recharge (object bot, int [] cellCat)
 		return cte.RechargeOK;
 	}
 }
-
-public int object::recharge (object bot, int cat){
+public int object::recharge (object bot, int cat, float energyThreshold = 1){
 	int cellCat [1] = {cat};
 	return recharge(bot, cellCat);
 }
-public int object::recharge (object bot){
-	return recharge(bot, cte().CellAny);
-}
+public int object::recharge (object bot, float energyThreshold = 1){
+	return recharge(bot, cte().CellAny);}
 
-//TODO : function to recharge all non grabber bot with low batterie, landed not moving.
+public int object::rechargeAll (int [] cellCat, float energyThreshold = 0.10, float energyThresholdCharged = 1)
+{
+	cte cte(0);
+	
+	//TODO : filter out bots that are grabber and can charge themselves
+	object [] bots = radarall(cte.BotAny, 0, 360, 0, 1000, 1, FilterOnlyLanding );
+
+	int RechargeLoaded = cte.RechargeLoaded;
+	int RechargeNoCell = cte.RechargeNoCell;
+	int RechargeNotLanded = cte.RechargeNotLanded;
+	int RechargeNotStill = cte.RechargeNotStill;
+	int RechargeOK = cte.RechargeOK;
+	
+	for (int i = 0; i < sizeof(bots) ; ++i )
+	{
+		if (bots[i].energyCell == null or bots[i].energyCell.energyLevel <= energyThreshold)
+		{
+			int rcat = recharge(bots[i], cellCat, energyThresholdCharged);
+			
+			//problems related to the charger, we have to stop
+			if (rcat == RechargeLoaded) return RechargeLoaded;
+			else if (rcat == RechargeNoCell) return RechargeNoCell;
+			//impossibility related to the chargee : we continue to the next
+			else if (rcat == RechargeNotLanded);//should not happen
+			else if (rcat == RechargeNotStill);
+			//charging ok : we go to the next
+			else if (rcat == RechargeOK);
+			//TODO alternative treatement of charging ok : recursive cal, new radarall to 
+			//get the new closest, accounting for the charger movement
+			//account for change in charge in other bots, if there are self charging bots, or a second charger bot
+			//go on for longer or indefinitely
+		}
+	}
+	return cte.RechargeOK;
+}
+public int object::rechargeAll (int cat, float energyThreshold = 0.10, float energyThresholdCharged = 1){
+	int cellCat [1] = {cat};
+	return rechargeAll(cellCat, energyThreshold, energyThresholdCharged);
+}
+public int object::rechargeAll (float energyThreshold = 0.10, float energyThresholdCharged = 1){
+	return rechargeAll(cte().CellAny, energyThreshold, energyThresholdCharged);}
+
 //TODO : function for grabber bots to recharge themselves.
 
 
@@ -405,6 +448,7 @@ public void object::fireAt(int [] cat, float time = 0.2)
 
 extern string lib()
 {
+	rechargeAll();
 	message("this is a basic library", DisplayInfo);
 	
 	return "this is a suposedly more helpful description of this library";
