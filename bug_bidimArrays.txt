@@ -1,0 +1,21 @@
+extern void object::Bug()
+{
+	int [] a;
+	int [] b = {};
+	int [][] z = {a, b};
+	
+	//z[0] = a;    //doesn't make a difference
+	//z[1] = b;    //doesn't make a difference
+	
+	z[0][4] = 72;
+	z[1][3] = 15;
+	
+	//a = z[0];    //solves the issue
+	//b = z[1];    //solves the issue
+	
+	message("sizeof(a), sizeof(z[0]): " + sizeof(a) + ", " + sizeof(z[0]));
+	message("sizeof(b), sizeof(z[1]): " + sizeof(b) + ", " + sizeof(z[1]));
+	wait(2);
+	message (a[4]);
+	message (b[3]);
+}
