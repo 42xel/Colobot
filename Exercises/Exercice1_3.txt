@@ -1,0 +1,4 @@
+extern void object::Titanium1()
+{
+	goFetch(TitaniumOre, search(Converter));
+}
